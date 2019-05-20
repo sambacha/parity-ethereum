@@ -163,6 +163,10 @@ pub mod executed;
 pub mod executive;
 pub mod machine;
 pub mod miner;
+pub mod open_executive;
+pub mod open_externalities;
+pub mod open_state;
+pub mod open_state_db;
 pub mod pod_state;
 pub mod pod_account;
 pub mod snapshot;
@@ -175,7 +179,7 @@ pub mod verification;
 
 mod account_db;
 mod externalities;
-mod factory;
+pub mod factory;
 mod tx_filter;
 
 #[cfg(test)]
