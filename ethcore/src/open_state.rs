@@ -95,7 +95,7 @@ enum AccountState {
     Committed,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 /// In-memory copy of the account data. Holds the optional account
 /// and the modification status.
 /// Account entry can contain existing (`Some`) or non-existing
@@ -180,6 +180,10 @@ impl AccountEntry {
             },
             None => self.account = None,
         }
+    }
+
+    pub fn to_account(&self) -> Option<Account> {
+        self.account.clone()
     }
 }
 
@@ -451,6 +455,13 @@ impl<B: Backend> State<B> {
                     checkpoint.entry(*address).or_insert(old_value);
                 }
             }
+        }
+
+        pub fn get_cached_account(&self, address: &Address) -> Option<Account> {
+            if let Some(acc) = self.cache.borrow_mut().get_mut(address) {
+                return acc.clone_dirty().account;
+            }
+            return None;
         }
 
         fn note_cache(&self, address: &Address) {
@@ -897,12 +908,38 @@ impl<B: Backend> State<B> {
             Ok(())
         }
 
+        pub fn get_cache_num(&self) -> usize {
+            self.cache.borrow().iter().len()
+        }
+
+        pub fn clear_accounts_storage_root(&mut self) {
+            let mut accounts = self.cache.borrow_mut();
+            for (address, ref mut a) in accounts.iter_mut() {
+                a.state = AccountState::Dirty;
+                if let Some(ref mut account) = a.account {
+                    let code = match account.code() {
+                        Some(code) => code.clone(),
+                        None => Arc::new(vec![]),
+                    };
+                    let cache = account.storage_cache();
+                    account.reset_code_and_storage(code, cache);
+                }
+            }
+        }
+
+        pub fn drop_cache(self) -> RefCell<HashMap<Address, AccountEntry>> {
+            self.cache
+        }
+
+        pub fn set_cache(&mut self, cache: RefCell<HashMap<Address, AccountEntry>>) {
+            self.cache = cache;
+        }
 	/// Commits our cached account changes into the trie.
-	pub fn commit_external(&mut self, db: &mut StateDB, root: &mut H256) -> Result<(), Error> {
+	pub fn commit_external(&mut self, db: &mut StateDB, root: &mut H256, filter_dirty: bool) -> Result<(), Error> {
 		assert!(self.checkpoints.borrow().is_empty());
 		// first, commit the sub trees.
 		let mut accounts = self.cache.borrow_mut();
-		for (address, ref mut a) in accounts.iter_mut().filter(|&(_, ref a)| a.is_dirty()) {
+		for (address, ref mut a) in accounts.iter_mut().filter(|&(_, ref a)| !filter_dirty || a.is_dirty()) {
 			if let Some(ref mut account) = a.account {
 				let addr_hash = account.address_hash(address);
 				{
@@ -918,7 +955,7 @@ impl<B: Backend> State<B> {
 
 		{
 			let mut trie = self.factories.trie.from_existing(db.as_hash_db_mut(), root)?;
-			for (address, ref mut a) in accounts.iter_mut().filter(|&(_, ref a)| a.is_dirty()) {
+			for (address, ref mut a) in accounts.iter_mut().filter(|&(_, ref a)| !filter_dirty || a.is_dirty()) {
 				a.state = AccountState::Committed;
 				match a.account {
 					Some(ref mut account) => {
@@ -1028,7 +1065,7 @@ impl<B: Backend> State<B> {
         /// This function is only intended for use in small tests or with fresh accounts.
         /// It requires FatDB.
         #[cfg(feature="to-pod-full")]
-        fn account_to_pod_account(&self, account: &Account, address: &Address) -> Result<PodAccount, Error> {
+        pub fn account_to_pod_account(&self, account: &Account, address: &Address) -> Result<PodAccount, Error> {
             let mut pod_storage = BTreeMap::new();
             let addr_hash = account.address_hash(address);
             let accountdb = self.factories.accountdb.readonly(self.db.as_hash_db(), addr_hash);

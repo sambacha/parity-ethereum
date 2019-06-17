@@ -35,7 +35,7 @@ use types::basic_account::BasicAccount;
 
 use std::cell::{RefCell, Cell};
 
-const STORAGE_CACHE_ITEMS: usize = 8192;
+const STORAGE_CACHE_ITEMS: usize = 10000000;
 
 /// Boolean type for clean/dirty status.
 #[derive(PartialEq, Eq, Clone, Copy, Debug)]
@@ -49,6 +49,7 @@ pub enum Filth {
 /// Single account in the system.
 /// Keeps track of changes to the code and storage.
 /// The changes are applied in `commit_storage` and `commit_code`
+#[derive(Clone)]
 pub struct Account {
 	// Balance of the account.
 	balance: U256,
@@ -481,6 +482,15 @@ impl Account {
 		self.balance = self.balance - *x;
 	}
 
+        pub fn storage_cache(&mut self) -> HashMap<H256, H256> {
+            let cache = self.storage_cache.borrow();
+            let mut map = HashMap::new();
+            for (k, v) in cache.iter() {
+                map.insert(k.clone(), v.clone());
+            }
+            map
+        }
+
 	/// Commit the `storage_changes` to the backing DB and update `storage_root`.
 	pub fn commit_storage(&mut self, trie_factory: &TrieFactory, db: &mut HashDB<KeccakHasher, DBValue>) -> TrieResult<()> {
 		let mut t = trie_factory.from_existing(db, &mut self.storage_root)?;
@@ -607,7 +617,6 @@ impl fmt::Debug for Account {
 		f.debug_struct("Account")
 			.field("balance", &self.balance)
 			.field("nonce", &self.nonce)
-			.field("code", &self.code())
 			.field("storage", &self.storage_changes.iter().collect::<BTreeMap<_, _>>())
 			.finish()
 	}
