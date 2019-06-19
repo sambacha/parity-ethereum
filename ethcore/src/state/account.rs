@@ -18,7 +18,8 @@
 
 use std::fmt;
 use std::sync::Arc;
-use std::collections::{HashMap, BTreeMap};
+use std::collections::{BTreeMap};
+use hashbrown::HashMap;
 use hash::{KECCAK_EMPTY, KECCAK_NULL_RLP, keccak};
 use ethereum_types::{H256, U256, Address};
 use error::Error;

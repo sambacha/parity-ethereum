@@ -76,6 +76,7 @@ extern crate ethjson;
 extern crate ethkey;
 extern crate futures;
 extern crate hash_db;
+extern crate hashbrown;
 extern crate heapsize;
 extern crate itertools;
 extern crate journaldb;

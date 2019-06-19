@@ -20,8 +20,9 @@
 //! or rolled back.
 
 use std::cell::{RefCell, RefMut};
-use std::collections::hash_map::Entry;
-use std::collections::{HashMap, BTreeMap, BTreeSet, HashSet};
+use std::collections::{BTreeMap, BTreeSet};
+use hashbrown::{HashMap, HashSet};
+use hashbrown::hash_map::Entry;
 use std::fmt;
 use std::sync::Arc;
 use hash::{KECCAK_NULL_RLP, KECCAK_EMPTY};

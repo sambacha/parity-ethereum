@@ -15,7 +15,7 @@
 // along with Parity Ethereum.  If not, see <http://www.gnu.org/licenses/>.
 
 //! Execution environment substate.
-use std::collections::HashSet;
+use hashbrown::HashSet;
 use ethereum_types::Address;
 use types::log_entry::LogEntry;
 use evm::{Schedule, CleanDustMode};
